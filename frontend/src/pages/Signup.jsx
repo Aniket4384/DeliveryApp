@@ -3,6 +3,8 @@ import { FaEyeSlash } from "react-icons/fa";
 import { IoEyeSharp } from "react-icons/io5";
 import { FcGoogle } from "react-icons/fc";
 import { Link } from "react-router-dom";
+import axios from "axios";
+import { serverUrl } from "../App";
 
 const primaryColor = "#2ECC71";
 const hoverColor = "#27AE60";
@@ -18,7 +20,38 @@ const Signup = () => {
 //    const[password,setPassword] = useState("")
 //     const[email,setEmail] = useState("")
 //      const[mobile,setMobile] = useState("")
+const handleSignUp = async (e) => {
+  e.preventDefault();
 
+  try {
+    const payload = {
+      ...form,
+      role,
+    };
+
+    const response = await axios.post(
+      `${serverUrl}/auth/signup`,
+      payload,
+      {
+        withCredentials: true, // agar cookies / JWT use kar rahe ho
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("Signup Success:", response.data);
+
+    // optional: redirect
+    // navigate("/login");
+
+  } catch (error) {
+    console.error(
+      "Signup Error:",
+      error.response?.data || error.message
+    );
+  }
+};
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -151,6 +184,7 @@ const Signup = () => {
           type="submit"
           onMouseEnter={() => setHoverButton(true)}
           onMouseLeave={() => setHoverButton(false)}
+          onClick={handleSignUp}
           style={{
             width: "100%",
             marginTop: "10px",

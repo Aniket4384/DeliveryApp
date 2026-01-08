@@ -1,10 +1,12 @@
 const User = require("../models/user")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcrypt")
+require("dotenv").config()
+const { sendOtpMail } = require("../utils/mail"); 
 const signup = async(req,res)=>{
     try{
         const{name,email,password,role,mobile} = req.body;
-        const user = await User.findOne({email})
+        let user = await User.findOne({email})
         if(user){
             return res.status(400).send("user already exist");
         }    
@@ -21,7 +23,7 @@ const signup = async(req,res)=>{
             maxAge: 60*60*1000
         })
 
-        return res.status(201).json(user);
+        return res.status(201).json("sign up successfully");
     }
     catch(err){
         return res.status(500).json(`sign up error ${err}`)
@@ -70,4 +72,54 @@ const logout = async (req,res)=>{
         res.status(503).send("Error : "+err.message)
     }
 }
-module.exports = {signup,signin,logout}
+
+const sendOtp = async(req,res)=>{
+    try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY, { expiresIn: "5m" });
+
+    // Send token as a link via email
+    const link = `http://localhost:5173/forgot-password?token=${token}`;
+
+    await sendOtpMail(email, { name: user.name, link });
+
+    res.json({ message: "Password reset link sent to your email" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token) return res.status(400).json({ message: "Token missing" });
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET_KEY); // return payload
+    } catch (err) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    const user = await User.findOne({ email: decoded.email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Hash new password and save
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Password updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+
+
+module.exports = {signup,signin,logout,sendOtp,resetPassword}

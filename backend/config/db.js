@@ -1,14 +1,12 @@
-const mongoose = require("mongoose")
-require("dotenv").config()
+const mongoose = require("mongoose");
+require("dotenv").config();
 
-async function main(){
-    try{
-        await mongoose.connect(process.env.KEY)
-    }
-
-    catch(err){
-        console.log("error in db connection",err.message)
-    }
+async function main() {
+  try {
+    await mongoose.connect(process.env.KEY);
+  } catch (err) {
+    console.log("error in db connection", err.message);
+  }
 }
 
-module.exports = main
+module.exports = main;
