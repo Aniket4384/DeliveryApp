@@ -6,6 +6,8 @@ import ForgotPassword from './pages/forgotPassword'
 export const serverUrl = "http://localhost:8080"
 const App = () => {
   return (
+
+
     <Routes>
       <Route path="/signup" element={<Signup/>}/>
        <Route path="/signin" element={<Signin/>}/>

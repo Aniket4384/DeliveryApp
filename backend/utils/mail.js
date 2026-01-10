@@ -11,15 +11,25 @@ const transporter = nodemailer.createTransport({
 });
 
 
- const sendOtpMail = async(to,otp)=>{
-    //to: jisko mail bhjene h
-    await transporter.sendMail({
-    from:  process.env.EMAIL,
-    to, //key value same
-    subject: "Reset your Password",
-    text: "Hello world?", // Plain-text version of the message
-    html: `<b>Your otp is </b>${otp}`, // HTML version of the message
+ const sendOtpMail = async (to, { name, link }) => {
+  await transporter.sendMail({
+    from: process.env.EMAIL,
+    to,
+    subject: "Reset your password",
+    html: `
+      <div style="font-family: sans-serif; line-height: 1.5;">
+        <p>Hello <b>${name}</b>,</p>
+        <p>You requested to reset your password. Click the link below:</p>
+        <p>
+          <a href="${link}" target="_blank" rel="noopener noreferrer" style="color: #2ECC71; font-weight: bold;">
+            Reset Password
+          </a>
+        </p>
+        <p>This link will expire in 10 minutes.</p>
+        <p>If you did not request this, ignore this email.</p>
+      </div>
+    `,
   });
-}
+};
 
 module.exports = {sendOtpMail}

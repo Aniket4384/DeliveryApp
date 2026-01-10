@@ -5,6 +5,8 @@ import { FcGoogle } from "react-icons/fc";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "../App";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from "../../firebase";
 
 const primaryColor = "#2ECC71";
 const hoverColor = "#27AE60";
@@ -16,11 +18,44 @@ const Signin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hoverButton, setHoverButton] = useState(false);
   const [hoverGoogle, setHoverGoogle] = useState(false);
+   const[error,setError] = useState("")
 
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
+
+  const handleGoogle = async () => {
+    try {
+      // 1️ Create Google provider
+      const provider = new GoogleAuthProvider();
+  
+      // 2️ Open Google login popup
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+  
+      // 3️ Validate mobile AFTER login
+  
+      // 4️ Send user data to backend
+      const { data } = await axios.post(
+        `${serverUrl}/auth/google-auth`,
+        {
+          email: user.email,
+        },
+        { withCredentials: true }
+      );
+  
+      console.log("Signup successful:", data);
+  
+      // 5️⃣ Optionally redirect user
+      // navigate("/dashboard");
+  
+    } catch (err) {
+      console.error("Google login/signup error:", err);
+      setError(err)
+      alert("Login failed. Try again!");
+    }
+  };
 
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -38,16 +73,15 @@ const Signin = () => {
             "Content-Type": "application/json",
           },
         }
+       
       );
+       setError("")
 
       console.log("Signin Success:", response.data);
       navigate("/");
 
     } catch (error) {
-      console.error(
-        "Signin Error:",
-        error.response?.data || error.message
-      );
+     setError( error.response?.data || error.message)
     }
   };
 
@@ -165,6 +199,7 @@ const Signin = () => {
         >
           Sign In
         </button>
+          
 
         {/* OR DIVIDER */}
         <div style={{ display: "flex", alignItems: "center", margin: "14px 0" }}>
@@ -196,8 +231,8 @@ const Signin = () => {
             fontWeight: 500,
             fontSize: "13px",
           }}
-          onClick={() =>
-            (window.location.href = "http://localhost:8080/auth/google")
+          onClick={handleGoogle
+            
           }
         >
           <FcGoogle size={18} />

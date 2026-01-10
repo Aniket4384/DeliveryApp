@@ -12,7 +12,8 @@ const port = process.env.PORT || 3000;
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173",'https://addictedly-preprostatic-farah.ngrok-free.dev','http://192.168.1.8:5173',
+  'http://192.168.80.1:5173',],
     credentials: true,
   })
 );

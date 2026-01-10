@@ -73,6 +73,7 @@ const logout = async (req,res)=>{
     }
 }
 
+// const frontendUrl =  "https://addictedly-preprostatic-farah.ngrok-free.dev";
 const sendOtp = async(req,res)=>{
     try {
     const { email } = req.body;
@@ -83,9 +84,9 @@ const sendOtp = async(req,res)=>{
     const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY, { expiresIn: "5m" });
 
     // Send token as a link via email
-    const link = `http://localhost:5173/forgot-password?token=${token}`;
+    const link = `http://192.168.1.8:5173/forgot-password?token=${token}`;
 
-    await sendOtpMail(email, { name: user.name, link });
+   await sendOtpMail(email, { name: user.name, link });
 
     res.json({ message: "Password reset link sent to your email" });
   } catch (err) {
@@ -120,6 +121,40 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const googleAuth = async(req,res)=>{
+    try{
+        const{name,email,mobile,role} = req.body;
+        //check for user
+        let user = await User.findOne({email})
+        let message = ""
+        if(!user){
+            user = await User.create({
+                name,email,mobile,role
+            })
+             message = "Sign up successfully";
+        }
+        else{
+             message = "Sign in successfully";
+        }
+         const token = jwt.sign({id:user._id,email},process.env.JWT_SECRET_KEY, {expiresIn:60*60})
+         res.cookie("token",token,{
+            secure:false,
+            maxAge: 60*60*1000
+        })
+
+        return res.status(200).json({
+      success: true,
+      message,
+      user,
+    });
+
+    }
+    catch(err){
+         return res.status(500).json(`google auth error ${err}`)
+
+    }
+}
 
 
-module.exports = {signup,signin,logout,sendOtp,resetPassword}
+
+module.exports = {signup,signin,logout,sendOtp,resetPassword,googleAuth}

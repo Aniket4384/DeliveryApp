@@ -1,6 +1,6 @@
 const express = require("express")
 const authRouter = express.Router()
-const {signup,signin,logout,resetPassword,sendOtp} = require("../controllers/authentication")
+const {signup,signin,logout,resetPassword,sendOtp,googleAuth} = require("../controllers/authentication")
 const {signupValidation,loginValidation} = require("../middleware/validation")
 const userMiddleware = require("../middleware/userMiddleware")
 
@@ -14,5 +14,7 @@ authRouter.get("/logout", userMiddleware, logout)  // to ensure logedin user onl
 authRouter.post("/forgot-password",sendOtp)
 
 authRouter.post("/reset-password",resetPassword)
+
+authRouter.post("/google-auth", googleAuth)
 
 module.exports = authRouter

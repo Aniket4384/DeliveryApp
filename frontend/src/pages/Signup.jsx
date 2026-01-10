@@ -5,6 +5,8 @@ import { FcGoogle } from "react-icons/fc";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "../App";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { auth } from "../../firebase";
 
 const primaryColor = "#2ECC71";
 const hoverColor = "#27AE60";
@@ -16,10 +18,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hoverButton, setHoverButton] = useState(false);
   const [hoverGoogle, setHoverGoogle] = useState(false);
-//   const[name,setName] = useState("")
-//    const[password,setPassword] = useState("")
-//     const[email,setEmail] = useState("")
-//      const[mobile,setMobile] = useState("")
+  const[error,setError] = useState("")
 const handleSignUp = async (e) => {
   e.preventDefault();
 
@@ -41,17 +40,17 @@ const handleSignUp = async (e) => {
     );
 
     console.log("Signup Success:", response.data);
+    setError("")
 
     // optional: redirect
     // navigate("/login");
 
   } catch (error) {
-    console.error(
-      "Signup Error:",
-      error.response?.data || error.message
-    );
+   setError( error.response?.data || error.message)
   }
 };
+
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -59,16 +58,56 @@ const handleSignUp = async (e) => {
     mobile: "",
   });
 
+  const handleGoogle = async () => {
+    if (!form.mobile) {
+      return setError("mobile number is required")
+    }
+  try {
+    // 1️ Create Google provider
+    const provider = new GoogleAuthProvider();
+
+    // 2️ Open Google login popup
+    const result = await signInWithPopup(auth, provider);
+  
+    const user = result.user;
+
+    // 3️ Validate mobile AFTER login
+
+    // 4️ Send user data to backend
+    const { data } = await axios.post(
+      `${serverUrl}/auth/google-auth`,
+      {
+        name: user.displayName,
+        email: user.email,
+        role,          // make sure role state exists
+        mobile: form.mobile,
+        googleId: user.uid
+      },
+      { withCredentials: true }
+    );
+
+    console.log("Signup successful:", data);
+
+    // 5️⃣ Optionally redirect user
+    // navigate("/dashboard");
+
+  } catch (err) {
+    console.error("Google login/signup error:", err);
+    alert("Login failed. Try again!");
+  }
+};
+ 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log("Signup Payload:", { ...form, role });
   };
 
-  const RoleCard = ({ value, label, icon }) => {
+    const RoleCard = ({ value, label, icon }) => {
     const [hover, setHover] = useState(false);
     const isSelected = role === value;
 
+  
     return (
       <div
         onClick={() => setRole(value)}
@@ -202,7 +241,7 @@ const handleSignUp = async (e) => {
         >
           Sign Up
         </button>
-
+        {error&& <p className="text-red-500 text-center">*{error}</p> }
         {/* OR DIVIDER */}
         <div style={{ display: "flex", alignItems: "center", margin: "14px 0" }}>
           <div style={{ flex: 1, height: "1px", backgroundColor: borderColor }} />
@@ -215,6 +254,7 @@ const handleSignUp = async (e) => {
           type="button"
           onMouseEnter={() => setHoverGoogle(true)}
           onMouseLeave={() => setHoverGoogle(false)}
+          onClick={handleGoogle}
           style={{
             width: "100%",
             padding: "10px",
@@ -231,7 +271,7 @@ const handleSignUp = async (e) => {
             fontWeight: 500,
             fontSize: "13px",
           }}
-          onClick={() => (window.location.href = "http://localhost:8080/auth/google")}
+         
         >
           <FcGoogle size={18} />
           Sign up with Google
@@ -240,7 +280,7 @@ const handleSignUp = async (e) => {
         {/* LOGIN LINK */}
         <p style={{ marginTop: "12px", textAlign: "center", fontSize: "12px" }}>
           Already have an account?{" "}
-          <Link to="/login" style={{ color: primaryColor, fontWeight: 600, textDecoration: "none" }}>
+          <Link to="/signin" style={{ color: primaryColor, fontWeight: 600, textDecoration: "none" }}>
             Login
           </Link>
         </p>
