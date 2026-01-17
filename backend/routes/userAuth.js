@@ -15,6 +15,10 @@ authRouter.post("/forgot-password",sendOtp)
 
 authRouter.post("/reset-password",resetPassword)
 
-authRouter.post("/google-auth", googleAuth)
+authRouter.post("/google-auth", (req,res)=>{
+     console.log("🔥 GOOGLE AUTH ROUTE HIT");
+  console.log("REQ BODY:", req.body);
+  res.json({ success: true, user: req.body });
+})
 
 module.exports = authRouter

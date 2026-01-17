@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["customer", "admin", "rider"],
       // required: true,
-      default: "customer",
+      // default: "customer",
     },
     mobile: {
       type: String,

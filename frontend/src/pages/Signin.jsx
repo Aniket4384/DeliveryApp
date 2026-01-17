@@ -7,14 +7,19 @@ import axios from "axios";
 import { serverUrl } from "../App";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../../firebase";
+import { useDispatch } from "react-redux";
+import { setUserData } from "../redux/userSlice";
 
 const primaryColor = "#2ECC71";
 const hoverColor = "#27AE60";
 const bgColor = "#fff9f6";
 const borderColor = "#DDEEE3";
 
+
+
 const Signin = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch()
   const [showPassword, setShowPassword] = useState(false);
   const [hoverButton, setHoverButton] = useState(false);
   const [hoverGoogle, setHoverGoogle] = useState(false);
@@ -32,20 +37,27 @@ const Signin = () => {
   
       // 2️ Open Google login popup
       const result = await signInWithPopup(auth, provider);
+      console.log(result.user.displayName)
       const user = result.user;
   
       // 3️ Validate mobile AFTER login
   
       // 4️ Send user data to backend
+      console.log("Sending:", {
+  email: user.email,
+  name: user.displayName
+});
       const { data } = await axios.post(
         `${serverUrl}/auth/google-auth`,
         {
           email: user.email,
+          name :  user.displayName
         },
         { withCredentials: true }
       );
-  
-      console.log("Signup successful:", data);
+       console.log("USER DATA:", data)
+
+       dispatch(setUserData(data))
   
       // 5️⃣ Optionally redirect user
       // navigate("/dashboard");
@@ -77,7 +89,7 @@ const Signin = () => {
       );
        setError("")
 
-      console.log("Signin Success:", response.data);
+         dispatch(setUserData( response.data));
       navigate("/");
 
     } catch (error) {

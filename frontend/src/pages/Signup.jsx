@@ -7,6 +7,8 @@ import axios from "axios";
 import { serverUrl } from "../App";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../../firebase";
+import { useDispatch } from "react-redux";
+import { setUserData } from "../redux/userSlice";
 
 const primaryColor = "#2ECC71";
 const hoverColor = "#27AE60";
@@ -19,6 +21,7 @@ const Signup = () => {
   const [hoverButton, setHoverButton] = useState(false);
   const [hoverGoogle, setHoverGoogle] = useState(false);
   const[error,setError] = useState("")
+  const dispatch = useDispatch()
 const handleSignUp = async (e) => {
   e.preventDefault();
 
@@ -38,8 +41,8 @@ const handleSignUp = async (e) => {
         },
       }
     );
-
-    console.log("Signup Success:", response.data);
+    console.log(response.data)
+    dispatch(setUserData(response.data))
     setError("")
 
     // optional: redirect
@@ -56,6 +59,7 @@ const handleSignUp = async (e) => {
     email: "",
     password: "",
     mobile: "",
+    role: "",
   });
 
   const handleGoogle = async () => {
@@ -79,14 +83,21 @@ const handleSignUp = async (e) => {
       {
         name: user.displayName,
         email: user.email,
-        role,          // make sure role state exists
+        role : role,         // make sure role state exists
         mobile: form.mobile,
         googleId: user.uid
       },
       { withCredentials: true }
     );
+    console.log("Google signup payload:", {
+  name: user.displayName,
+  email: user.email,
+  role,
+  mobile: form.mobile,
+  googleId: user.uid
+});
 
-    console.log("Signup successful:", data);
+    dispatch(setUserData(data))
 
     // 5️⃣ Optionally redirect user
     // navigate("/dashboard");

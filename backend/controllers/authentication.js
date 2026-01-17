@@ -1,92 +1,103 @@
-const User = require("../models/user")
-const jwt = require("jsonwebtoken")
-const bcrypt = require("bcrypt")
-require("dotenv").config()
-const { sendOtpMail } = require("../utils/mail"); 
-const signup = async(req,res)=>{
-    try{
-        const{name,email,password,role,mobile} = req.body;
-        let user = await User.findOne({email})
-        if(user){
-            return res.status(400).send("user already exist");
-        }    
-        
-        const hashedPass = await bcrypt.hash(password,10);
-
-        user = await User.create({
-            name,email,password:hashedPass,role,mobile
-        })
-
-        const token = jwt.sign({id:user._id,email},process.env.JWT_SECRET_KEY, {expiresIn:60*60})
-        res.cookie("token",token,{
-            secure:false,
-            maxAge: 60*60*1000
-        })
-
-        return res.status(201).json("sign up successfully");
+const User = require("../models/user");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const redisClient = require("../config/redis");
+require("dotenv").config();
+const { sendOtpMail } = require("../utils/mail");
+const signup = async (req, res) => {
+  try {
+    const { name, email, password, role, mobile } = req.body;
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).send("user already exist");
     }
-    catch(err){
-        return res.status(500).json(`sign up error ${err}`)
 
+    const hashedPass = await bcrypt.hash(password, 10);
+
+    user = await User.create({
+      name,
+      email,
+      password: hashedPass,
+      role,
+      mobile,
+    });
+    const token = jwt.sign(
+      { id: user._id, email },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: 60 * 60 }
+    );
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 1000,
+    });
+
+    return res.status(201).json(user);
+  } catch (err) {
+    return res.status(500).json(`sign up error ${err}`);
+  }
+};
+
+const signin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).send("user does not exist ");
     }
-}
-
-const signin = async(req,res)=>{
-    try{
-        const{email,password} = req.body;
-        const user = await User.findOne({email})
-        if(!user){
-            return res.status(400).send("user does not exist ");
-        }    
-        const isMatch = await bcrypt.compare(password,user.password)
-        if(!isMatch){
-            return res.status(400).json({message:"incorrect password"})
-        }
-        const token = jwt.sign({id:user._id,email},process.env.JWT_SECRET_KEY, {expiresIn:60*60})
-        res.cookie("token",token,{
-            secure:false,
-            maxAge: 60*60*1000
-        })
-
-        return res.status(200).json(user);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "incorrect password" });
     }
-    catch(err){
-        return res.status(500).json(`sign in error ${err}`)
+    const token = jwt.sign(
+      { id: user._id, email },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: 60 * 60 }
+    );
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: false,
+      maxAge: 60 * 60 * 1000,
+    });
 
-    }
-}
+    return res.status(200).json(user);
+  } catch (err) {
+    return res.status(500).json(`sign in error ${err}`);
+  }
+};
 
-const logout = async (req,res)=>{
-    try{
-        const {token} = req.cookies;
-        const payload = jwt.decode(token)
+const logout = async (req, res) => {
+  try {
+    const { token } = req.cookies;
+    const payload = jwt.decode(token);
 
-        await redisClient.set(`token:${token}`, 'blocked')  // since token is valid add to redis
-        await redisClient.expireAt(`token:${token}`,payload.exp) // expire the token
+    await redisClient.set(`token:${token}`, "blocked"); // since token is valid add to redis
+    await redisClient.expireAt(`token:${token}`, payload.exp); // expire the token
 
-        res.cookie("token",null,{expires:new Date(Date.now())});
-        res.send("logout successfully")
-
-    }
-    catch(err){
-        res.status(503).send("Error : "+err.message)
-    }
-}
+    res.cookie("token", null, { expires: new Date(Date.now()) }); // delete cookies
+    res.send("logout successfully");
+  } catch (err) {
+    res.status(503).send("Error : " + err.message);
+  }
+};
 
 // const frontendUrl =  "https://addictedly-preprostatic-farah.ngrok-free.dev";
-const sendOtp = async(req,res)=>{
-    try {
+const sendOtp = async (req, res) => {
+  try {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY, { expiresIn: "5m" });
+    const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY, {
+      expiresIn: "15m",
+    });
 
     // Send token as a link via email
     const link = `http://192.168.1.8:5173/forgot-password?token=${token}`;
 
-   await sendOtpMail(email, { name: user.name, link });
+    await sendOtpMail(email, { name: user.name, link });
 
     res.json({ message: "Password reset link sent to your email" });
   } catch (err) {
@@ -121,40 +132,73 @@ const resetPassword = async (req, res) => {
   }
 };
 
-const googleAuth = async(req,res)=>{
-    try{
-        const{name,email,mobile,role} = req.body;
-        //check for user
-        let user = await User.findOne({email})
-        let message = ""
-        if(!user){
-            user = await User.create({
-                name,email,mobile,role
-            })
-             message = "Sign up successfully";
-        }
-        else{
-             message = "Sign in successfully";
-        }
-         const token = jwt.sign({id:user._id,email},process.env.JWT_SECRET_KEY, {expiresIn:60*60})
-         res.cookie("token",token,{
-            secure:false,
-            maxAge: 60*60*1000
-        })
+const googleAuth = async (req, res) => {
+  console.log("GOOGLE AUTH ROUTE HIT");
+  try {
+    console.log("data received is ", req.body);
+    const { name, email, mobile, role } = req.body;
 
-        return res.status(200).json({
-      success: true,
-      message,
-      user,
+    let user = await User.findOne({ email });
+    let message = "";
+    
+    if (!user) {
+      user = await User.create({
+        name,
+        email,
+        mobile: mobile || "", 
+        role: role ? role : "customer",
+      });
+      console.log("Created user:", user);
+      message = "Sign up successfully";
+    } else {
+      if (!user.role && role) {
+        user.role = role;
+        await user.save();
+      }
+      message = "Sign in successfully";
+    }
+
+
+    const token = jwt.sign(
+      { 
+        id: user._id, 
+        email: user.email,
+        role: user.role 
+      },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: '7d' } 
+    );
+
+   
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax", 
+      secure: false,  
+      maxAge: 7 * 24 * 60 * 60 * 1000, 
+      path: "/"
     });
 
-    }
-    catch(err){
-         return res.status(500).json(`google auth error ${err}`)
+  
+    return res.status(200).json({
+      success: true,
+      message,
+      token: token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        mobile: user.mobile
+      }
+    });
+    
+  } catch (err) {
+    console.error("google auth error", err);
+    return res.status(500).json({ 
+      success: false,
+      message: `google auth error: ${err.message}` 
+    });
+  }
+};
 
-    }
-}
-
-
-
-module.exports = {signup,signin,logout,sendOtp,resetPassword,googleAuth}
+module.exports = { signup, signin, logout, sendOtp, resetPassword, googleAuth };

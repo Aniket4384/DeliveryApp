@@ -1,40 +1,75 @@
-const userMiddleware = async(req,res,next)=>{
-    try{
-        const {token} = req.cookies;
+// middleware/userMiddleware.js
+const jwt = require("jsonwebtoken")
+const User = require("../models/user")
+const redisClient = require("../config/redis")
 
-        if(!token){
-            throw new Error("invalid token")
+const userMiddleware = async (req, res, next) => {
+    try {
+        const token = req.cookies.token;
+        
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required. Please login."
+            });
         }
 
-        const payload =  jwt.verify(token, process.env.JWT_SECRET_KEY )   
-        const {_id} = payload
-        if(!_id){
-             throw new Error("id is missing")
-        }
-        const result = await User.findById(_id)
-
-        if(!result){
-            throw new Error("user does not exist")
-        }
-         // check if it is present in blocklist
-        const isBlocked = await redisClient.exists(`token:${token}`)
-
-        if(isBlocked){
-            throw new Error("invaild token")
+        const payload = jwt.verify(token, process.env.JWT_SECRET_KEY);
+        
+        const { id } = payload;
+        if (!id) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token structure"
+            });
         }
 
-        req.result = result;
+        req.userId = id;
+        const user = await User.findById(id);
 
-        next()
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "User does not exist"
+            });
+        }
 
+        // Check if token is in blocklist
+        const isBlocked = await redisClient.exists(`token:${token}`);
+        if (isBlocked) {
+            return res.status(401).json({
+                success: false,
+                message: "Session expired. Please login again."
+            });
+        }
 
+        req.user = user;
+        next();
+
+    } catch (err) {
+        console.error("User middleware error:", err.message);
+        
+        // Handle specific JWT errors
+        if (err.name === 'JsonWebTokenError') {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid token"
+            });
+        }
+        
+        if (err.name === 'TokenExpiredError') {
+            return res.status(401).json({
+                success: false,
+                message: "Token expired. Please login again."
+            });
+        }
+
+        // Generic error
+        return res.status(401).json({
+            success: false,
+            message: "Authentication failed"
+        });
     }
-
-    catch(err){
-        res.send("Error: "+err)
-
-    }
-
 }
 
-module.exports = userMiddleware
+module.exports = userMiddleware;
